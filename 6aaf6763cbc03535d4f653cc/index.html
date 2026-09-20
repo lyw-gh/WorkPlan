@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1976d2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="排班表">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-512.jpg">
+<title>我的排班表</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f0f2f5;
+    color: #1a1a1a;
+    font-size: 18px;
+    line-height: 1.5;
+    height: 100%;
+    overflow: hidden;
+  }
+  .app {
+    max-width: 640px; margin: 0 auto;
+    height: 100vh; height: 100dvh;
+    background: #f0f2f5; position: relative;
+    display: flex; flex-direction: column;
+  }
+  /* 中间可滚动内容区 */
+  .content {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+
+  /* 顶部标题 */
+  .header {
+    background: linear-gradient(135deg, #1976d2, #42a5f5);
+    color: white;
+    padding: 18px 20px;
+    text-align: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .header h1 { font-size: 24px; font-weight: 600; letter-spacing: 2px; }
+
+  /* 今日大卡片 */
+  .today-card {
+    margin: 16px;
+    border-radius: 18px;
+    padding: 28px 24px;
+    color: white;
+    text-align: center;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+    position: relative;
+  }
+  .today-card.shift-day { background: linear-gradient(135deg, #ffb300, #ffd54f); color: #5d4037; }
+  .today-card.shift-night { background: linear-gradient(135deg, #283593, #3949ab); color: #fff; }
+  .today-card.shift-rest { background: linear-gradient(135deg, #2e7d32, #66bb6a); color: #fff; }
+  .today-card .date-label { font-size: 17px; opacity: 0.92; margin-bottom: 6px; }
+  .today-card .date-main { font-size: 22px; font-weight: 600; margin-bottom: 12px; }
+  .today-card .shift-type { font-size: 44px; font-weight: 800; letter-spacing: 6px; margin: 10px 0; }
+  .today-card .shift-daynum { font-size: 16px; opacity: 0.9; }
+
+  /* 近三天快捷预览 */
+  .quick-row {
+    display: flex; gap: 10px; margin: 0 16px 16px;
+  }
+  .quick-item {
+    flex: 1; border-radius: 14px; padding: 14px 8px; text-align: center;
+    color: white; box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+  }
+  .quick-item .ql { font-size: 14px; opacity: 0.92; }
+  .quick-item .qt { font-size: 22px; font-weight: 700; margin: 6px 0 2px; }
+  .quick-item .qd { font-size: 13px; opacity: 0.85; }
+  .quick-item.day { background: #ffb300; color: #5d4037; }
+  .quick-item.night { background: #3949ab; }
+  .quick-item.rest { background: #66bb6a; }
+
+  /* 标签切换 */
+  .tabs { display: flex; margin: 0 16px 12px; background: #e0e0e0; border-radius: 12px; padding: 4px; }
+  .tab {
+    flex: 1; text-align: center; padding: 12px 0; font-size: 18px;
+    border-radius: 9px; cursor: pointer; font-weight: 600; color: #555;
+    transition: all 0.2s;
+  }
+  .tab.active { background: white; color: #1976d2; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+
+  /* 月历视图 */
+  .cal-view {
+    margin: 0 16px 16px;
+    background: white; border-radius: 14px; padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .cal-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .cal-nav button { background: #1976d2; color: white; border: none; border-radius: 8px; padding: 8px 16px; font-size: 17px; cursor: pointer; }
+  .cal-nav .cal-title { font-size: 22px; font-weight: 700; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-head { text-align: center; font-size: 15px; font-weight: 700; color: #888; padding: 6px 0; }
+  .cal-head.sun { color: #e53935; }
+  .cal-head.sat { color: #1976d2; }
+  .cal-cell {
+    aspect-ratio: 1; border-radius: 8px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; font-size: 17px; font-weight: 600;
+    color: white; position: relative;
+  }
+  .cal-cell.day { background: #ffd54f; color: #5d4037; }
+  .cal-cell.night { background: #3949ab; }
+  .cal-cell.rest { background: #66bb6a; }
+  .cal-cell.empty { background: transparent; }
+  .cal-cell.today { outline: 3px solid #1976d2; outline-offset: -3px; }
+  .cal-cell.holiday::after {
+    content: ''; position: absolute; top: 2px; right: 2px;
+    width: 6px; height: 6px; border-radius: 50%; background: #e53935;
+  }
+  .cal-cell .cn { font-size: 11px; opacity: 0.9; margin-top: 1px; }
+  .cal-legend { display: flex; justify-content: center; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
+  .cal-legend span { display: flex; align-items: center; gap: 6px; font-size: 15px; }
+  .cal-legend i { width: 18px; height: 18px; border-radius: 4px; display: inline-block; }
+
+  /* 节假日面板 */
+  .holiday-panel {
+    margin: 0 16px 16px;
+    background: white; border-radius: 14px; padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .holiday-panel h3 { font-size: 20px; font-weight: 700; margin-bottom: 14px; text-align: center; color: #333; }
+  .holiday-list { display: flex; flex-direction: column; gap: 10px; }
+  .holiday-item {
+    display: flex; align-items: center; gap: 12px;
+    background: #fafafa; border-radius: 12px; padding: 14px 16px;
+  }
+  .holiday-item .h-date { font-size: 18px; font-weight: 700; color: #555; min-width: 60px; }
+  .holiday-item .h-name { flex: 1; font-size: 20px; font-weight: 700; color: #d32f2f; }
+  .holiday-item .h-badge {
+    min-width: 70px; text-align: center; padding: 8px 0; border-radius: 10px;
+    font-size: 17px; font-weight: 700; color: white;
+  }
+  .h-badge.day { background: #ffb300; color: #5d4037; }
+  .h-badge.night { background: #3949ab; }
+  .h-badge.rest { background: #66bb6a; }
+  .holiday-empty { text-align: center; color: #999; font-size: 17px; padding: 30px 0; }
+
+  /* 底部按钮（固定在视口底部，不随内容滚动） */
+  .bottom-bar {
+    flex-shrink: 0;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    text-align: center;
+    background: #f0f2f5;
+    border-top: 1px solid #e0e0e0;
+  }
+  .btn-reset {
+    background: white; color: #d32f2f; border: 2px solid #d32f2f; border-radius: 12px;
+    padding: 14px 32px; font-size: 18px; font-weight: 600; cursor: pointer;
+  }
+  .btn-reset:active { background: #ffebee; }
+
+  /* 设置界面 */
+  .setup-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100;
+    display: none; align-items: flex-end; justify-content: center;
+  }
+  .setup-overlay.show { display: flex; }
+  .setup-panel {
+    background: white; width: 100%; max-width: 640px; border-radius: 20px 20px 0 0;
+    padding: 24px 20px 32px; max-height: 90vh; overflow-y: auto;
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .setup-panel h2 { text-align: center; font-size: 23px; margin-bottom: 8px; }
+  .setup-panel .sub { text-align: center; color: #666; font-size: 16px; margin-bottom: 20px; }
+  .setup-panel .date-pick { text-align: center; margin-bottom: 18px; }
+  .setup-panel .date-pick label { font-size: 17px; margin-right: 10px; }
+  .setup-panel .date-pick input {
+    font-size: 18px; padding: 10px 14px; border: 2px solid #ddd; border-radius: 10px;
+  }
+  .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .setup-btn {
+    border: none; border-radius: 14px; padding: 22px 10px; color: white;
+    font-size: 21px; font-weight: 700; cursor: pointer; text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .setup-btn:active { transform: scale(0.97); }
+  .setup-btn.day { background: #ffb300; color: #5d4037; }
+  .setup-btn.night { background: #3949ab; }
+  .setup-btn.rest { background: #66bb6a; }
+  .setup-btn .sub-text { font-size: 14px; opacity: 0.9; font-weight: 400; margin-top: 4px; display: block; }
+  .setup-cancel { margin-top: 16px; text-align: center; color: #888; font-size: 17px; cursor: pointer; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header"><h1>我的排班表</h1></div>
+
+  <div class="content">
+    <div id="todayCard" class="today-card"></div>
+
+    <div class="quick-row" id="quickRow"></div>
+
+    <div class="tabs">
+      <div class="tab active" id="tabCal" onclick="switchTab('cal')">月历</div>
+      <div class="tab" id="tabHoliday" onclick="switchTab('holiday')">节假日</div>
+    </div>
+
+    <div id="calView" class="cal-view"></div>
+    <div id="holidayPanel" class="holiday-panel hidden"></div>
+  </div>
+
+  <div class="bottom-bar">
+    <button class="btn-reset" onclick="openSetup()">修改排班设置</button>
+  </div>
+</div>
+
+<!-- 设置界面 -->
+<div class="setup-overlay" id="setupOverlay">
+  <div class="setup-panel">
+    <h2>设置排班基准</h2>
+    <div class="sub">请选择下面这一天是你排班循环里的哪一天</div>
+    <div class="date-pick">
+      <label for="refDate">基准日期：</label>
+      <input type="date" id="refDate">
+    </div>
+    <div class="setup-grid" id="setupGrid"></div>
+    <div class="setup-cancel" onclick="closeSetup()">取消</div>
+  </div>
+</div>
+
+<script>
+// 排班循环：白班、白班、夜班、夜班、休息、休息
+const CYCLE = ['day','day','night','night','rest','rest'];
+const CYCLE_NAME = { day:'白班', night:'夜班', rest:'休息' };
+const CYCLE_DAY = ['白班','白班','夜班','夜班','休息','休息'];
+const WEEKDAYS = ['周日','周一','周二','周三','周四','周五','周六'];
+
+const STORAGE_KEY = 'shift_ref'; // { date: 'YYYY-MM-DD', pos: 0-5 }
+
+// 中国法定节假日（公历日期），覆盖 2024-2030 年
+const HOLIDAYS = {
+  // 元旦
+  '2024-01-01':'元旦','2025-01-01':'元旦','2026-01-01':'元旦','2027-01-01':'元旦',
+  '2028-01-01':'元旦','2029-01-01':'元旦','2030-01-01':'元旦',
+  // 春节（农历正月初一）
+  '2024-02-10':'春节','2025-01-29':'春节','2026-02-17':'春节','2027-02-06':'春节',
+  '2028-01-26':'春节','2029-02-13':'春节','2030-02-03':'春节',
+  // 清明节
+  '2024-04-04':'清明节','2025-04-04':'清明节','2026-04-05':'清明节','2027-04-05':'清明节',
+  '2028-04-04':'清明节','2029-04-04':'清明节','2030-04-05':'清明节',
+  // 劳动节
+  '2024-05-01':'劳动节','2025-05-01':'劳动节','2026-05-01':'劳动节','2027-05-01':'劳动节',
+  '2028-05-01':'劳动节','2029-05-01':'劳动节','2030-05-01':'劳动节',
+  // 端午节（农历五月初五）
+  '2024-06-10':'端午节','2025-05-31':'端午节','2026-06-19':'端午节','2027-06-09':'端午节',
+  '2028-05-28':'端午节','2029-06-16':'端午节','2030-06-05':'端午节',
+  // 中秋节（农历八月十五）
+  '2024-09-17':'中秋节','2025-10-06':'中秋节','2026-09-25':'中秋节','2027-09-15':'中秋节',
+  '2028-10-03':'中秋节','2029-09-22':'中秋节','2030-09-12':'中秋节',
+  // 国庆节
+  '2024-10-01':'国庆节','2025-10-01':'国庆节','2026-10-01':'国庆节','2027-10-01':'国庆节',
+  '2028-10-01':'国庆节','2029-10-01':'国庆节','2030-10-01':'国庆节',
+};
+
+let viewMode = 'cal'; // 'cal'=月历, 'holiday'=节假日
+let calMonthOffset = 0; // 0=本月, 1=下月, -1=上月
+
+// ===== 日期工具 =====
+function pad(n){ return String(n).padStart(2,'0'); }
+function getDateKey(d){
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function parseKey(key){
+  const [y,m,d] = key.split('-').map(Number);
+  return new Date(y, m-1, d, 12, 0, 0);
+}
+function daysBetween(key1, key2){
+  const d1 = parseKey(key1), d2 = parseKey(key2);
+  return Math.round((d2 - d1) / 86400000);
+}
+function getShift(key, ref){
+  const diff = daysBetween(ref.date, key);
+  const pos = ((ref.pos + diff) % 6 + 6) % 6;
+  return { type: CYCLE[pos], pos, name: CYCLE_DAY[pos] };
+}
+
+// ===== 存储 =====
+function loadRef(){
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e){ return null; }
+}
+function saveRef(ref){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(ref));
+}
+
+// ===== 渲染 =====
+function render(){
+  const ref = loadRef();
+  if(!ref){ openSetup(true); return; }
+
+  const today = getDateKey(new Date());
+  const todayShift = getShift(today, ref);
+
+  // 今日大卡片
+  const card = document.getElementById('todayCard');
+  card.className = 'today-card shift-' + todayShift.type;
+  const td = new Date();
+  card.innerHTML = `
+    <div class="date-label">今天</div>
+    <div class="date-main">${td.getFullYear()}年${td.getMonth()+1}月${td.getDate()}日 ${WEEKDAYS[td.getDay()]}</div>
+    <div class="shift-type">${todayShift.name}</div>
+    <div class="shift-daynum">第 ${todayShift.pos + 1} 天 / 6天循环</div>
+  `;
+
+  // 近三天（明天、后天、大后天）
+  const quick = document.getElementById('quickRow');
+  quick.innerHTML = '';
+  const labels = ['明天','后天','大后天'];
+  for(let i=1;i<=3;i++){
+    const d = new Date(); d.setDate(d.getDate()+i);
+    const k = getDateKey(d);
+    const s = getShift(k, ref);
+    quick.innerHTML += `
+      <div class="quick-item ${s.type}">
+        <div class="ql">${labels[i-1]}</div>
+        <div class="qt">${s.name}</div>
+        <div class="qd">${d.getMonth()+1}/${d.getDate()} ${WEEKDAYS[d.getDay()]}</div>
+      </div>
+    `;
+  }
+
+  if(viewMode === 'cal') renderCal(ref, today);
+  else renderHolidays(ref, today);
+}
+
+// 获取当前查看的年月
+function getViewYearMonth(){
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + calMonthOffset;
+  const d = new Date(year + Math.floor(month/12), ((month%12)+12)%12, 1);
+  return { y: d.getFullYear(), m: d.getMonth() };
+}
+
+function renderCal(ref, today){
+  const cal = document.getElementById('calView');
+  const { y, m } = getViewYearMonth();
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+
+  let html = `
+    <div class="cal-nav">
+      <button onclick="changeMonth(-1)">‹</button>
+      <div class="cal-title">${y}年${m+1}月</div>
+      <button onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="cal-grid">
+      <div class="cal-head sun">日</div>
+      <div class="cal-head">一</div>
+      <div class="cal-head">二</div>
+      <div class="cal-head">三</div>
+      <div class="cal-head">四</div>
+      <div class="cal-head">五</div>
+      <div class="cal-head sat">六</div>
+  `;
+  for(let i=0;i<firstDay;i++) html += '<div class="cal-cell empty"></div>';
+  for(let day=1;day<=daysInMonth;day++){
+    const k = `${y}-${pad(m+1)}-${pad(day)}`;
+    const s = getShift(k, ref);
+    const isToday = (k === today);
+    const holiday = HOLIDAYS[k];
+    html += `<div class="cal-cell ${s.type} ${isToday?'today':''} ${holiday?'holiday':''}">${day}<div class="cn">${s.name}</div></div>`;
+  }
+  html += `</div>
+    <div class="cal-legend">
+      <span><i style="background:#ffd54f"></i>白班</span>
+      <span><i style="background:#3949ab"></i>夜班</span>
+      <span><i style="background:#66bb6a"></i>休息</span>
+      <span><i style="background:#e53935;border-radius:50%"></i>节假日</span>
+    </div>`;
+  cal.innerHTML = html;
+}
+
+function renderHolidays(ref, today){
+  const panel = document.getElementById('holidayPanel');
+  const { y, m } = getViewYearMonth();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const monthHolidays = [];
+  for(let day=1;day<=daysInMonth;day++){
+    const k = `${y}-${pad(m+1)}-${pad(day)}`;
+    const holiday = HOLIDAYS[k];
+    if(holiday){
+      const s = getShift(k, ref);
+      monthHolidays.push({ day, name:holiday, shift:s });
+    }
+  }
+  let hHtml = `<h3>${y}年${m+1}月节假日</h3>`;
+  if(monthHolidays.length === 0){
+    hHtml += `<div class="holiday-empty">本月无节假日</div>`;
+  } else {
+    hHtml += '<div class="holiday-list">';
+    monthHolidays.forEach(h => {
+      hHtml += `
+        <div class="holiday-item">
+          <div class="h-date">${m+1}/${h.day}</div>
+          <div class="h-name">${h.name}</div>
+          <div class="h-badge ${h.shift.type}">${h.shift.name}</div>
+        </div>
+      `;
+    });
+    hHtml += '</div>';
+  }
+  panel.innerHTML = hHtml;
+}
+
+function switchTab(mode){
+  viewMode = mode;
+  document.getElementById('tabCal').classList.toggle('active', mode==='cal');
+  document.getElementById('tabHoliday').classList.toggle('active', mode==='holiday');
+  document.getElementById('calView').classList.toggle('hidden', mode!=='cal');
+  document.getElementById('holidayPanel').classList.toggle('hidden', mode!=='holiday');
+  render();
+}
+
+function changeMonth(delta){
+  calMonthOffset += delta;
+  render();
+}
+
+// ===== 设置界面 =====
+function openSetup(isFirst){
+  const overlay = document.getElementById('setupOverlay');
+  overlay.classList.add('show');
+  const ref = loadRef();
+  const input = document.getElementById('refDate');
+  input.value = ref ? ref.date : getDateKey(new Date());
+
+  const grid = document.getElementById('setupGrid');
+  grid.innerHTML = '';
+  const defs = [
+    {type:'day', pos:0, label:'白班', sub:'第 1 天'},
+    {type:'day', pos:1, label:'白班', sub:'第 2 天'},
+    {type:'night', pos:2, label:'夜班', sub:'第 1 天'},
+    {type:'night', pos:3, label:'夜班', sub:'第 2 天'},
+    {type:'rest', pos:4, label:'休息', sub:'第 1 天'},
+    {type:'rest', pos:5, label:'休息', sub:'第 2 天'},
+  ];
+  defs.forEach(def => {
+    grid.innerHTML += `<button class="setup-btn ${def.type}" onclick="setRef(${def.pos})">${def.label}<span class="sub-text">${def.sub}</span></button>`;
+  });
+
+  if(isFirst){
+    // 首次打开禁止取消
+    document.querySelector('.setup-cancel').style.display = 'none';
+  } else {
+    document.querySelector('.setup-cancel').style.display = 'block';
+  }
+}
+
+function closeSetup(){
+  document.getElementById('setupOverlay').classList.remove('show');
+  if(!loadRef()){
+    // 没设置过就取消，仍然显示设置
+    openSetup(true);
+  }
+}
+
+function setRef(pos){
+  const date = document.getElementById('refDate').value;
+  if(!date){ alert('请选择日期'); return; }
+  saveRef({ date, pos });
+  document.getElementById('setupOverlay').classList.remove('show');
+  calMonthOffset = 0;
+  render();
+}
+
+// ===== 启动 =====
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+render();
+</script>
+</body>
+</html>

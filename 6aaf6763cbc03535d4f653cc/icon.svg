@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1976d2"/>
+      <stop offset="100%" stop-color="#42a5f5"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <!-- 日历外框 -->
+  <rect x="116" y="120" width="280" height="300" rx="22" fill="#ffffff"/>
+  <rect x="116" y="120" width="280" height="64" rx="22" fill="#ffb300"/>
+  <rect x="116" y="164" width="280" height="20" fill="#ffb300"/>
+  <!-- 日历顶部两个环 -->
+  <circle cx="190" cy="110" r="16" fill="#1976d2"/>
+  <circle cx="322" cy="110" r="16" fill="#1976d2"/>
+  <!-- 日期格子 2x3 表示排班循环 -->
+  <g transform="translate(140,206)">
+    <!-- 白班 -->
+    <rect x="0" y="0" width="70" height="60" rx="10" fill="#ffd54f"/>
+    <text x="35" y="40" text-anchor="middle" font-size="26" font-weight="bold" fill="#5d4037" font-family="sans-serif">白</text>
+    <rect x="84" y="0" width="70" height="60" rx="10" fill="#ffd54f"/>
+    <text x="119" y="40" text-anchor="middle" font-size="26" font-weight="bold" fill="#5d4037" font-family="sans-serif">白</text>
+    <!-- 夜班 -->
+    <rect x="0" y="72" width="70" height="60" rx="10" fill="#3949ab"/>
+    <text x="35" y="112" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff" font-family="sans-serif">夜</text>
+    <rect x="84" y="72" width="70" height="60" rx="10" fill="#3949ab"/>
+    <text x="119" y="112" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff" font-family="sans-serif">夜</text>
+    <!-- 休息 -->
+    <rect x="0" y="144" width="70" height="60" rx="10" fill="#66bb6a"/>
+    <text x="35" y="184" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff" font-family="sans-serif">休</text>
+    <rect x="84" y="144" width="70" height="60" rx="10" fill="#66bb6a"/>
+    <text x="119" y="184" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff" font-family="sans-serif">休</text>
+  </g>
+  <!-- 右侧竖排文字 -->
+  <text x="372" y="250" font-size="30" font-weight="bold" fill="#ffffff" font-family="sans-serif" letter-spacing="4">排</text>
+  <text x="372" y="294" font-size="30" font-weight="bold" fill="#ffffff" font-family="sans-serif" letter-spacing="4">班</text>
+  <text x="372" y="338" font-size="30" font-weight="bold" fill="#ffffff" font-family="sans-serif" letter-spacing="4">表</text>
+</svg>
